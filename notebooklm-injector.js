@@ -71,23 +71,36 @@ async function runClipper() {
   // Wait for NLM to fully hydrate
   await sleep(1500);
 
-  try {
-    // ── STEP 1: Click "+ Create new" ──────────────────────────────────
-    const createBtn = await waitFor(() =>
-      findByText('Create new') ||
-      document.querySelector('[aria-label*="Create new" i]')
-    );
-    createBtn.click();
-    await sleep(2000); // wait for notebook page to open
+  // Detect where we landed — NLM sometimes redirects to an existing notebook
+  const inNotebook    = window.location.pathname.startsWith('/notebook/');
+  const addSrcInUrl   = window.location.search.includes('addSource');
 
-    // ── STEP 2: Click "Add source" inside the new notebook ────────────
-    const addSourceBtn = await waitFor(() =>
-      findByText('Add source') ||
-      findByText('Add sources') ||
-      document.querySelector('[aria-label*="Add source" i]')
-    , 12000);
-    addSourceBtn.click();
-    await sleep(600);
+  try {
+    // ── STEP 1: Click "+ Create new" (only on the NLM homepage) ──────
+    if (!inNotebook) {
+      const createBtn = await waitFor(() =>
+        findByText('Create new') ||
+        findByText('New notebook') ||
+        findByText('Create notebook') ||
+        document.querySelector('[aria-label*="Create new" i]') ||
+        document.querySelector('[aria-label*="new notebook" i]')
+      );
+      createBtn.click();
+      await sleep(2000); // wait for notebook page to open
+    }
+
+    // ── STEP 2: Click "Add source" (skip if dialog already open via ?addSource) ──
+    if (!addSrcInUrl) {
+      const addSourceBtn = await waitFor(() =>
+        findByText('Add source') ||
+        findByText('Add sources') ||
+        document.querySelector('[aria-label*="Add source" i]')
+      , 12000);
+      addSourceBtn.click();
+      await sleep(600);
+    } else {
+      await sleep(400); // dialog may still be animating open
+    }
 
     // ── STEP 3: Select "Website" / "Link" source type ─────────────────
     const websiteBtn = await waitFor(() =>
