@@ -69,7 +69,7 @@ async function runClipper() {
   ]);
 
   // Wait for NLM to fully hydrate
-  await sleep(2000);
+  await sleep(1500);
 
   try {
     // ── STEP 1: Click "+ Create new" ──────────────────────────────────
@@ -78,7 +78,7 @@ async function runClipper() {
       document.querySelector('[aria-label*="Create new" i]')
     );
     createBtn.click();
-    await sleep(2500); // wait for notebook page to open
+    await sleep(2000); // wait for notebook page to open
 
     // ── STEP 2: Click "Add source" inside the new notebook ────────────
     const addSourceBtn = await waitFor(() =>
@@ -87,7 +87,7 @@ async function runClipper() {
       document.querySelector('[aria-label*="Add source" i]')
     , 12000);
     addSourceBtn.click();
-    await sleep(800);
+    await sleep(600);
 
     // ── STEP 3: Select "Website" / "Link" source type ─────────────────
     const websiteBtn = await waitFor(() =>
@@ -98,7 +98,7 @@ async function runClipper() {
       document.querySelector('[aria-label*="url" i]')
     , 8000);
     websiteBtn.click();
-    await sleep(600);
+    await sleep(500);
 
     // ── STEP 4: Fill in the URL input ─────────────────────────────────
     const urlInput = await waitFor(() =>
@@ -111,7 +111,7 @@ async function runClipper() {
       document.querySelector('input[placeholder*="http" i]')
     , 8000);
     setInputValue(urlInput, targetUrl);
-    await sleep(400);
+    await sleep(300);
 
     // ── STEP 5: Click Insert ──────────────────────────────────────────
     const insertBtn = await waitFor(() =>
@@ -125,7 +125,7 @@ async function runClipper() {
     insertBtn.click();
 
     // ── STEP 5b: Poll the "N sources" counter — stays 0 if URL import failed ──
-    await sleep(2000); // let dialog animate out and source card appear
+    await sleep(1500); // let dialog animate out and source card appear
 
     // NLM shows "0 sources" / "1 source" in the chat bottom bar.
     // Use TreeWalker to scan raw text nodes — more reliable than el.textContent.
@@ -142,8 +142,8 @@ async function runClipper() {
 
     let urlSucceeded = false;
     let countEverDetected = false;
-    for (let i = 0; i < 10; i++) {
-      await sleep(1000);
+    for (let i = 0; i < 8; i++) {
+      await sleep(800);
       const count = getLoadedSourceCount();
       if (count >= 0) countEverDetected = true;
       console.log('[NotebookLM Clipper] source count:', count);
@@ -162,7 +162,7 @@ async function runClipper() {
         findByText('Add source') || findByText('Add sources')
       , 6000);
       addBtn2.click();
-      await sleep(800);
+      await sleep(600);
 
       // Click "Copied text" / "Paste text" option
       const textBtn = await waitFor(() =>
@@ -215,7 +215,7 @@ async function runClipper() {
       //     — do NOT touch Audio Overview until there's actual content
       let sourceReady = false;
       for (let i = 0; i < 20; i++) {
-        await sleep(1500);
+        await sleep(1000);
         const count = getLoadedSourceCount();
         console.log('[NotebookLM Clipper] podcast source count:', count);
         if (count > 0) { sourceReady = true; break; }
