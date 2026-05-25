@@ -124,38 +124,32 @@ async function runClipper() {
     , 8000);
     insertBtn.click();
 
-    // Dialog closes — poll for up to 12 s for NLM to async-fetch the URL
-    await sleep(1500); // let dialog animate out first
+    // ── STEP 5b: Poll the "N sources" counter — stays 0 if URL import failed ──
+    await sleep(2000); // let dialog animate out and source card appear
 
-    const ERROR_PHRASES = [
-      'source restriction', 'unable to import', "can't be added",
-      "couldn't be imported", 'failed to import', 'cannot be imported',
-      'import failed', 'web page restrict', 'could not be added',
-    ];
-
-    // ── STEP 5b: Detect restriction error on the source card ──────────
-    function pageHasRestrictionError() {
-      // Primary: check all rendered text on the page
-      const body = document.body.innerText.toLowerCase();
-      if (ERROR_PHRASES.some(p => body.includes(p))) return true;
-      // Secondary: check aria-labels and titles on any element
-      for (const el of document.querySelectorAll('[aria-label],[title]')) {
-        const attr = (el.getAttribute('aria-label') || el.getAttribute('title') || '').toLowerCase();
-        if (attr.includes('error') || attr.includes('restriction') || attr.includes('failed')) return true;
+    // NLM shows "0 sources" / "1 source" in the chat bottom bar (leaf text node)
+    function getLoadedSourceCount() {
+      for (const el of document.querySelectorAll('*')) {
+        if (el.children.length > 0) continue; // leaf nodes only
+        const m = el.textContent.trim().match(/^(\d+)\s+sources?$/i);
+        if (m) return parseInt(m[1]);
       }
-      return false;
+      return -1; // indicator not visible
     }
 
-    // Poll up to 12 s total (1.5 s already elapsed)
-    let hasRestriction = false;
-    for (let i = 0; i < 11; i++) {
+    let urlSucceeded = false;
+    let countEverDetected = false;
+    for (let i = 0; i < 10; i++) {
       await sleep(1000);
-      if (pageHasRestrictionError()) { hasRestriction = true; break; }
-      // Also stop early if a source was successfully loaded (no need to wait further)
-      const successCard = document.querySelector('[class*="source" i] [class*="check" i], [class*="source" i] [class*="done" i]');
-      if (successCard) break;
+      const count = getLoadedSourceCount();
+      if (count >= 0) countEverDetected = true;
+      console.log('[NotebookLM Clipper] source count:', count);
+      if (count > 0) { urlSucceeded = true; break; }
     }
-    console.log('[NotebookLM Clipper] restriction detected:', hasRestriction, '| has content:', !!targetContent);
+
+    // Only fall back if we could read the counter AND it stayed at 0
+    const hasRestriction = countEverDetected && !urlSucceeded;
+    console.log('[NotebookLM Clipper] urlSucceeded:', urlSucceeded, '| hasRestriction:', hasRestriction, '| hasContent:', !!targetContent);
 
     if (hasRestriction && targetContent) {
       // No open dialog to close — error is on the source card in the panel
