@@ -32,16 +32,18 @@ function findByText(text, root = document) {
   );
 }
 
-// React-compatible value setter — works for both input and textarea
+// React/Angular-compatible value setter — works for both input and textarea
 function setInputValue(el, value) {
   const proto = el.tagName === 'TEXTAREA'
     ? window.HTMLTextAreaElement.prototype
     : window.HTMLInputElement.prototype;
   const nativeSetter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+  el.focus();
   if (nativeSetter) nativeSetter.call(el, value);
   else el.value = value;
   el.dispatchEvent(new Event('input',  { bubbles: true }));
   el.dispatchEvent(new Event('change', { bubbles: true }));
+  el.dispatchEvent(new Event('blur',   { bubbles: true }));
 }
 
 async function runClipper() {
@@ -183,10 +185,12 @@ async function runClipper() {
       setInputValue(textArea2, formattedText);
       await sleep(400);
 
-      // Click Insert for text paste
-      const insertBtn2 = await waitFor(() =>
-        findByText('Insert') || findByText('Add') || document.querySelector('button[type="submit"]')
-      , 6000);
+      // Click Insert — scope to the open dialog so we don't accidentally click "Add sources"
+      const insertBtn2 = await waitFor(() => {
+        const dlg = document.querySelector('[role="dialog"], mat-dialog-container, .cdk-dialog-container');
+        const root = dlg || document;
+        return findByText('Insert', root) || root.querySelector('button[type="submit"]');
+      }, 6000);
       insertBtn2.click();
       await sleep(1000);
     } else {
