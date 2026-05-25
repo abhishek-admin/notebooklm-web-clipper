@@ -8,12 +8,14 @@
   <style>
     :root { --accent: #8b5cf6; }
 
+    /* Page card — always visible */
     .page-card {
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 12px 14px;
-      margin-bottom: 14px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
     }
     .page-card-domain {
       font-size: 10px;
@@ -21,43 +23,107 @@
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      margin-bottom: 5px;
+      margin-bottom: 3px;
       opacity: 0.85;
     }
     .page-card-title {
       font-size: 12px;
       color: var(--text-1);
       font-weight: 500;
-      line-height: 1.45;
+      line-height: 1.4;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
 
-    .notebooklm-btn {
-      width: 100%;
-      padding: 9px 16px;
-      background: transparent;
-      border: 1px solid rgba(139,92,246,0.3);
-      border-radius: 10px;
+    /* Hook text */
+    .hook-text {
+      font-size: 12.5px;
+      line-height: 1.65;
+      color: var(--text-1);
+      margin: 0 0 10px 0;
+    }
+
+    /* Topic chips */
+    .topics-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 14px;
+    }
+    .topic-chip {
+      font-size: 10px;
+      padding: 3px 9px;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent-border);
+      border-radius: 20px;
       color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* NLM action buttons */
+    .nlm-actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .nlm-actions .primary-btn {
+      flex: 1;
+      font-size: 12px;
+      padding: 10px 12px;
+    }
+    .podcast-btn {
+      flex: 1;
+      padding: 10px 12px;
+      background: transparent;
+      border: 1px solid var(--border-mid);
+      border-radius: 10px;
+      color: var(--text-2);
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      margin-top: 8px;
-      transition: background 0.2s ease, transform 0.2s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
+      transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      position: relative;
+      overflow: hidden;
     }
-    .notebooklm-btn:hover {
-      background: rgba(139,92,246,0.10);
+    .podcast-btn:hover {
+      background: var(--surface2);
+      color: var(--text-1);
+      border-color: var(--border-mid);
       transform: translateY(-1px);
     }
+
+    /* Status bar (after clicking Add to NLM) */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(139,92,246,0.08);
+      border: 1px solid var(--accent-border);
+      border-radius: 8px;
+      font-size: 11px;
+      color: var(--accent);
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 1.2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+    .status-bar.hidden { display: none; }
+
     @media (prefers-color-scheme: light) {
-      .notebooklm-btn { border-color: rgba(139,92,246,0.35); }
+      .podcast-btn { border-color: rgba(0,0,0,0.12); }
     }
   </style>
 </head>
@@ -72,6 +138,12 @@
         <span class="badge">Gemini</span>
         <button id="settings-btn" class="settings-btn" title="API Settings">⚙</button>
       </div>
+    </div>
+
+    <!-- Always visible page card -->
+    <div class="page-card">
+      <div class="page-card-domain" id="page-domain">Loading...</div>
+      <div class="page-card-title" id="page-title">Detecting current tab...</div>
     </div>
 
     <div id="onboarding" class="hidden">
@@ -94,32 +166,23 @@
       <button id="onboard-save-btn" class="primary-btn">Get Started →</button>
     </div>
 
-    <div id="main-content">
-      <div class="page-card">
-        <div class="page-card-domain" id="page-domain">Loading page...</div>
-        <div class="page-card-title" id="page-title">Detecting current tab...</div>
-      </div>
-      <p class="subtitle">Clip this page to NotebookLM with a smart AI note</p>
-      <button id="action-btn" class="primary-btn">
-        <span class="btn-text">✂ Generate Clip</span>
-      </button>
-    </div>
-
     <div id="loading" class="hidden">
       <div class="spinner"></div>
-      <p class="loading-text">Generating smart note...</p>
+      <p class="loading-text">Analyzing with Gemini...</p>
     </div>
 
     <div id="result" class="hidden">
-      <div class="result-header">
-        <span>Clip Preview</span>
-        <div class="result-actions">
-          <button id="copy-btn" class="copy-btn" title="Copy to clipboard">📋</button>
-        </div>
+      <p class="hook-text" id="hook-text"></p>
+      <div class="topics-row" id="topics-row"></div>
+      <div class="nlm-actions">
+        <button id="add-nlm-btn" class="primary-btn">+ Add to NotebookLM</button>
+        <button id="podcast-btn" class="podcast-btn">🎙 Podcast</button>
       </div>
-      <div id="result-content" class="result-content"></div>
-      <button id="open-notebooklm-btn" class="notebooklm-btn">📖 Open NotebookLM</button>
-      <button id="rerun-btn" class="rerun-btn">↻ Re-generate</button>
+      <div id="status-bar" class="status-bar hidden">
+        <div class="status-dot"></div>
+        <span id="status-text">Opening NotebookLM...</span>
+      </div>
+      <button id="rerun-btn" class="rerun-btn">↻ Re-analyze</button>
     </div>
 
     <div id="error" class="hidden">
