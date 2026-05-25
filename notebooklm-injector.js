@@ -127,12 +127,15 @@ async function runClipper() {
     // ── STEP 5b: Poll the "N sources" counter — stays 0 if URL import failed ──
     await sleep(2000); // let dialog animate out and source card appear
 
-    // NLM shows "0 sources" / "1 source" in the chat bottom bar (leaf text node)
+    // NLM shows "0 sources" / "1 source" in the chat bottom bar.
+    // Use TreeWalker to scan raw text nodes — more reliable than el.textContent.
     function getLoadedSourceCount() {
-      for (const el of document.querySelectorAll('*')) {
-        if (el.children.length > 0) continue; // leaf nodes only
-        const m = el.textContent.trim().match(/^(\d+)\s+sources?$/i);
-        if (m) return parseInt(m[1]);
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) {
+        const text = node.textContent.trim();
+        const m = text.match(/^(\d+)\s+sources?$/i);
+        if (m && node.parentElement?.offsetParent !== null) return parseInt(m[1]);
       }
       return -1; // indicator not visible
     }
@@ -208,30 +211,37 @@ async function runClipper() {
 
     // ── STEP 6 (podcast only): Trigger Audio Overview ─────────────────
     if (targetMode === 'podcast') {
-      // Give NLM time to finish processing the source (URL or text paste)
-      // before the Studio panel enables Audio Overview
-      await sleep(3000);
-
-      // Poll up to 45s — text-paste sources can take longer to index
-      const genBtn = await waitFor(() =>
-        findByText('Generate') ||
-        findByText('Audio Overview') ||
-        findByText('Customize') ||
-        document.querySelector('[aria-label*="audio overview" i]') ||
-        document.querySelector('[aria-label*="generate" i]') ||
-        document.querySelector('button[data-mat-icon-name*="audio" i]')
-      , 45000, 1500);
-
-      if (genBtn) {
-        genBtn.click();
-        await sleep(800);
-        // Dismiss confirm dialog if NLM shows one
-        const dlg = document.querySelector('[role="dialog"], mat-dialog-container');
-        if (dlg) {
-          const confirmBtn = findByText('Generate', dlg) || findByText('Start', dlg);
-          if (confirmBtn) confirmBtn.click();
-        }
+      // 6a: Wait until at least 1 source is confirmed loaded (up to 30 s)
+      //     — do NOT touch Audio Overview until there's actual content
+      let sourceReady = false;
+      for (let i = 0; i < 20; i++) {
+        await sleep(1500);
+        const count = getLoadedSourceCount();
+        console.log('[NotebookLM Clipper] podcast source count:', count);
+        if (count > 0) { sourceReady = true; break; }
       }
+
+      if (!sourceReady) {
+        console.warn('[NotebookLM Clipper] No source loaded — skipping Audio Overview');
+        return; // user is on NLM, they can trigger it manually
+      }
+
+      await sleep(1000);
+
+      // 6b: Click "Audio Overview" card in the Studio panel to open the generator
+      const audioCard = await waitFor(() =>
+        findByText('Audio Overview') ||
+        document.querySelector('[aria-label*="audio overview" i]')
+      , 10000, 500);
+      audioCard.click();
+      await sleep(1500);
+
+      // 6c: Click the "Generate" button that appears inside the Audio Overview panel
+      const generateBtn = await waitFor(() =>
+        findByText('Generate') ||
+        document.querySelector('[aria-label*="generate" i]')
+      , 10000, 500);
+      if (generateBtn) generateBtn.click();
     }
 
   } catch (err) {
