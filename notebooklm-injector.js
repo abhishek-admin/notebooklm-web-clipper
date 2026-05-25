@@ -122,19 +122,41 @@ async function runClipper() {
     , 8000);
     insertBtn.click();
 
-    // ── STEP 5b: Detect "source restrictions" error & fall back to text paste
-    await sleep(2500);
-    const hasRestriction = !!Array.from(document.querySelectorAll('*')).find(el =>
-      el.children.length === 0 &&
-      (el.textContent.includes('source restriction') ||
-       el.textContent.includes('Unable to import'))
-    );
+    // Dialog closes — poll for up to 12 s for NLM to async-fetch the URL
+    await sleep(1500); // let dialog animate out first
+
+    const ERROR_PHRASES = [
+      'source restriction', 'unable to import', "can't be added",
+      "couldn't be imported", 'failed to import', 'cannot be imported',
+      'import failed', 'web page restrict', 'could not be added',
+    ];
+
+    // ── STEP 5b: Detect restriction error on the source card ──────────
+    function pageHasRestrictionError() {
+      // Primary: check all rendered text on the page
+      const body = document.body.innerText.toLowerCase();
+      if (ERROR_PHRASES.some(p => body.includes(p))) return true;
+      // Secondary: check aria-labels and titles on any element
+      for (const el of document.querySelectorAll('[aria-label],[title]')) {
+        const attr = (el.getAttribute('aria-label') || el.getAttribute('title') || '').toLowerCase();
+        if (attr.includes('error') || attr.includes('restriction') || attr.includes('failed')) return true;
+      }
+      return false;
+    }
+
+    // Poll up to 12 s total (1.5 s already elapsed)
+    let hasRestriction = false;
+    for (let i = 0; i < 11; i++) {
+      await sleep(1000);
+      if (pageHasRestrictionError()) { hasRestriction = true; break; }
+      // Also stop early if a source was successfully loaded (no need to wait further)
+      const successCard = document.querySelector('[class*="source" i] [class*="check" i], [class*="source" i] [class*="done" i]');
+      if (successCard) break;
+    }
+    console.log('[NotebookLM Clipper] restriction detected:', hasRestriction, '| has content:', !!targetContent);
 
     if (hasRestriction && targetContent) {
-      // Close any open dialog first
-      const closeBtn = document.querySelector('[aria-label="Close"], [aria-label="close"]') ||
-        findByText('Cancel') || findByText('✕') || findByText('×');
-      if (closeBtn) { closeBtn.click(); await sleep(500); }
+      // No open dialog to close — error is on the source card in the panel
 
       // Re-open Add sources
       const addBtn2 = await waitFor(() =>
