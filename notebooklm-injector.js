@@ -208,21 +208,29 @@ async function runClipper() {
 
     // ── STEP 6 (podcast only): Trigger Audio Overview ─────────────────
     if (targetMode === 'podcast') {
-      // Wait for source to finish processing (up to 30s)
+      // Give NLM time to finish processing the source (URL or text paste)
+      // before the Studio panel enables Audio Overview
+      await sleep(3000);
+
+      // Poll up to 45s — text-paste sources can take longer to index
       const genBtn = await waitFor(() =>
         findByText('Generate') ||
         findByText('Audio Overview') ||
         findByText('Customize') ||
         document.querySelector('[aria-label*="audio overview" i]') ||
-        document.querySelector('[aria-label*="generate" i]')
-      , 30000, 1000);
+        document.querySelector('[aria-label*="generate" i]') ||
+        document.querySelector('button[data-mat-icon-name*="audio" i]')
+      , 45000, 1500);
 
       if (genBtn) {
         genBtn.click();
-        await sleep(500);
-        // If a "Generate" confirm dialog appears, click it
-        const confirmBtn = findByText('Generate') || findByText('Start');
-        if (confirmBtn) confirmBtn.click();
+        await sleep(800);
+        // Dismiss confirm dialog if NLM shows one
+        const dlg = document.querySelector('[role="dialog"], mat-dialog-container');
+        if (dlg) {
+          const confirmBtn = findByText('Generate', dlg) || findByText('Start', dlg);
+          if (confirmBtn) confirmBtn.click();
+        }
       }
     }
 
