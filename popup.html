@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NotebookLM Clipper</title>
+  <link rel="stylesheet" href="popup.css">
+  <style>
+    :root { --accent: #8b5cf6; }
+
+    .page-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+    }
+    .page-card-domain {
+      font-size: 10px;
+      color: var(--accent);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 5px;
+      opacity: 0.85;
+    }
+    .page-card-title {
+      font-size: 12px;
+      color: var(--text-1);
+      font-weight: 500;
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .notebooklm-btn {
+      width: 100%;
+      padding: 9px 16px;
+      background: transparent;
+      border: 1px solid rgba(139,92,246,0.3);
+      border-radius: 10px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s ease, transform 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .notebooklm-btn:hover {
+      background: rgba(139,92,246,0.10);
+      transform: translateY(-1px);
+    }
+    @media (prefers-color-scheme: light) {
+      .notebooklm-btn { border-color: rgba(139,92,246,0.35); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-left">
+        <span class="logo">✦</span>
+        <h1>NotebookLM Clipper</h1>
+      </div>
+      <div class="header-right">
+        <span class="badge">Gemini</span>
+        <button id="settings-btn" class="settings-btn" title="API Settings">⚙</button>
+      </div>
+    </div>
+
+    <div id="onboarding" class="hidden">
+      <p class="onboarding-title">👋 Welcome! Add your API key</p>
+      <p class="onboarding-desc">Enter a <strong>Gemini</strong> or <strong>OpenRouter</strong> key — just one is enough to get started.</p>
+      <div class="onboard-field">
+        <label class="settings-label">Gemini API Key <span class="settings-hint">— <a href="https://aistudio.google.com/app/apikey" target="_blank">Get free key ↗</a></span></label>
+        <div class="settings-row">
+          <input type="password" id="onboard-gemini-input" class="settings-input" placeholder="AIza..." />
+          <button id="onboard-toggle-gemini" class="toggle-vis-btn">👁</button>
+        </div>
+      </div>
+      <div class="onboard-field">
+        <label class="settings-label">OpenRouter API Key <span class="settings-hint">— <a href="https://openrouter.ai/keys" target="_blank">Get key ↗</a></span></label>
+        <div class="settings-row">
+          <input type="password" id="onboard-openrouter-input" class="settings-input" placeholder="sk-or-..." />
+          <button id="onboard-toggle-openrouter" class="toggle-vis-btn">👁</button>
+        </div>
+      </div>
+      <button id="onboard-save-btn" class="primary-btn">Get Started →</button>
+    </div>
+
+    <div id="main-content">
+      <div class="page-card">
+        <div class="page-card-domain" id="page-domain">Loading page...</div>
+        <div class="page-card-title" id="page-title">Detecting current tab...</div>
+      </div>
+      <p class="subtitle">Clip this page to NotebookLM with a smart AI note</p>
+      <button id="action-btn" class="primary-btn">
+        <span class="btn-text">✂ Generate Clip</span>
+      </button>
+    </div>
+
+    <div id="loading" class="hidden">
+      <div class="spinner"></div>
+      <p class="loading-text">Generating smart note...</p>
+    </div>
+
+    <div id="result" class="hidden">
+      <div class="result-header">
+        <span>Clip Preview</span>
+        <div class="result-actions">
+          <button id="copy-btn" class="copy-btn" title="Copy to clipboard">📋</button>
+        </div>
+      </div>
+      <div id="result-content" class="result-content"></div>
+      <button id="open-notebooklm-btn" class="notebooklm-btn">📖 Open NotebookLM</button>
+      <button id="rerun-btn" class="rerun-btn">↻ Re-generate</button>
+    </div>
+
+    <div id="error" class="hidden">
+      <p class="error-text" id="error-message">Something went wrong.</p>
+      <button id="retry-btn" class="secondary-btn">Retry</button>
+    </div>
+
+    <div id="settings-panel" class="hidden">
+      <div class="settings-header">
+        <span>API Settings</span>
+        <button id="settings-close" class="settings-close">✕</button>
+      </div>
+      <div class="settings-body">
+        <label class="settings-label">Gemini API Key</label>
+        <div class="settings-row">
+          <input type="password" id="gemini-key-input" class="settings-input" placeholder="Paste Gemini key..." />
+          <button id="toggle-gemini-key" class="toggle-vis-btn">👁</button>
+        </div>
+        <label class="settings-label">OpenRouter API Key <span class="settings-hint">(fallback)</span></label>
+        <div class="settings-row">
+          <input type="password" id="openrouter-key-input" class="settings-input" placeholder="Paste OpenRouter key..." />
+          <button id="toggle-openrouter-key" class="toggle-vis-btn">👁</button>
+        </div>
+        <div class="settings-actions">
+          <button id="save-keys-btn" class="primary-btn" style="padding:8px 12px;font-size:12px;">Save Keys</button>
+          <button id="clear-keys-btn" class="secondary-btn">Clear All Keys</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>Built by <a href="https://x.com/happy_ships" target="_blank">@happy_ships</a></span>
+      <span>Day 11/180</span>
+    </div>
+  </div>
+
+  <script src="gemini.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

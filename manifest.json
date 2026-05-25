@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "NotebookLM Web Clipper",
+  "description": "One-click clip any web page to NotebookLM with an AI-generated smart note.",
+  "version": "1.0.0",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "tabs"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "32": "icons/icons32.png"
+    }
+  },
+  "icons": {
+    "32": "icons/icons32.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "host_permissions": [
+    "https://generativelanguage.googleapis.com/*",
+    "https://openrouter.ai/*"
+  ]
+}
