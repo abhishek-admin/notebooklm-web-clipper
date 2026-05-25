@@ -77,6 +77,8 @@ async function runClipper() {
   // Check from the DOM whether the Add Sources dialog is already open
   function addSourcesDialogOpen() {
     return !!(
+      document.querySelector('[role="dialog"]') ||
+      document.querySelector('mat-dialog-container') ||
       findByText('Website') || findByText('Websites') ||
       findByText('Copied text') || findByText('Upload files') ||
       document.querySelector('[aria-label*="website" i]')
@@ -106,8 +108,7 @@ async function runClipper() {
       , 12000);
       addSourceBtn.click();
       await sleep(600);
-      // Wait until the dialog actually opens
-      await waitFor(() => addSourcesDialogOpen(), 6000);
+      // Step 3's waitFor already polls for the Website button — no extra wait needed
     }
 
     // ── STEP 3: Select "Website" / "Link" source type ─────────────────
