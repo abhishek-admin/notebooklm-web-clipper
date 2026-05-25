@@ -72,8 +72,16 @@ async function runClipper() {
   await sleep(1500);
 
   // Detect where we landed — NLM sometimes redirects to an existing notebook
-  const inNotebook    = window.location.pathname.startsWith('/notebook/');
-  const addSrcInUrl   = window.location.search.includes('addSource');
+  const inNotebook = window.location.pathname.startsWith('/notebook/');
+
+  // Check from the DOM whether the Add Sources dialog is already open
+  function addSourcesDialogOpen() {
+    return !!(
+      findByText('Website') || findByText('Websites') ||
+      findByText('Copied text') || findByText('Upload files') ||
+      document.querySelector('[aria-label*="website" i]')
+    );
+  }
 
   try {
     // ── STEP 1: Click "+ Create new" (only on the NLM homepage) ──────
@@ -89,8 +97,8 @@ async function runClipper() {
       await sleep(2000); // wait for notebook page to open
     }
 
-    // ── STEP 2: Click "Add source" (skip if dialog already open via ?addSource) ──
-    if (!addSrcInUrl) {
+    // ── STEP 2: Click "Add source" unless the dialog is already open ──
+    if (!addSourcesDialogOpen()) {
       const addSourceBtn = await waitFor(() =>
         findByText('Add source') ||
         findByText('Add sources') ||
@@ -98,8 +106,8 @@ async function runClipper() {
       , 12000);
       addSourceBtn.click();
       await sleep(600);
-    } else {
-      await sleep(400); // dialog may still be animating open
+      // Wait until the dialog actually opens
+      await waitFor(() => addSourcesDialogOpen(), 6000);
     }
 
     // ── STEP 3: Select "Website" / "Link" source type ─────────────────
