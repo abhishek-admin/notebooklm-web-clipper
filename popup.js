@@ -144,7 +144,7 @@ Content: ${page.text.slice(0, 6000)}`;
     addNlmBtn.disabled  = true;
     podcastBtn.disabled = true;
 
-    await chrome.storage.session.set({
+    await chrome.storage.local.set({
       nlm_pending_url:   currentTabUrl,
       nlm_pending_title: currentTabTitle,
       nlm_pending_mode:  mode,

@@ -43,7 +43,7 @@ function setInputValue(input, value) {
 
 async function runClipper() {
   // Only fire when triggered by the extension
-  const data = await chrome.storage.session.get([
+  const data = await chrome.storage.local.get([
     'nlm_pending_url',
     'nlm_pending_title',
     'nlm_pending_mode',
@@ -55,7 +55,7 @@ async function runClipper() {
   const targetMode = data.nlm_pending_mode || 'source'; // 'source' | 'podcast'
 
   // Clear so it doesn't re-fire on refresh
-  await chrome.storage.session.remove(['nlm_pending_url', 'nlm_pending_title', 'nlm_pending_mode']);
+  await chrome.storage.local.remove(['nlm_pending_url', 'nlm_pending_title', 'nlm_pending_mode']);
 
   // Wait for NLM to fully hydrate
   await sleep(2000);
