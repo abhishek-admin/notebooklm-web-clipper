@@ -170,12 +170,27 @@ async function runClipper() {
         document.querySelector('[aria-label*="text" i]')
       , 6000);
       textBtn.click();
-      await sleep(600);
+      await sleep(1000); // wait for "Paste copied text" dialog to fully open
 
-      // Fill the textarea with formatted content
-      const textArea2 = await waitFor(() => document.querySelector('textarea'), 6000);
+      // Wait for "Paste copied text" dialog — target its specific placeholder, NOT the search box
+      const textArea2 = await waitFor(() =>
+        document.querySelector('textarea[placeholder*="paste" i]') ||
+        document.querySelector('textarea[placeholder*="here" i]') ||
+        document.querySelector('textarea[placeholder*="type" i]') ||
+        (() => {
+          const dlg = document.querySelector('[role="dialog"], mat-dialog-container, .cdk-dialog-container');
+          return dlg?.querySelector('textarea');
+        })()
+      , 8000);
       const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-      const formattedText = `Title: ${targetTitle}\nSource: ${targetUrl}\nDate: ${today}\n\n${targetContent.slice(0, 50000)}`;
+      // Strip HTML tags before pasting so NLM gets clean readable text
+      const cleanContent = targetContent
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+      const formattedText = `Title: ${targetTitle}\nSource: ${targetUrl}\nDate: ${today}\n\n${cleanContent.slice(0, 50000)}`;
       setInputValue(textArea2, formattedText);
       await sleep(400);
 
