@@ -32,13 +32,16 @@ function findByText(text, root = document) {
   );
 }
 
-// React-compatible value setter for controlled inputs
-function setInputValue(input, value) {
-  const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
-  if (nativeSetter) nativeSetter.call(input, value);
-  else input.value = value;
-  input.dispatchEvent(new Event('input',  { bubbles: true }));
-  input.dispatchEvent(new Event('change', { bubbles: true }));
+// React-compatible value setter — works for both input and textarea
+function setInputValue(el, value) {
+  const proto = el.tagName === 'TEXTAREA'
+    ? window.HTMLTextAreaElement.prototype
+    : window.HTMLInputElement.prototype;
+  const nativeSetter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+  if (nativeSetter) nativeSetter.call(el, value);
+  else el.value = value;
+  el.dispatchEvent(new Event('input',  { bubbles: true }));
+  el.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 async function runClipper() {
@@ -91,12 +94,13 @@ async function runClipper() {
 
     // ── STEP 4: Fill in the URL input ─────────────────────────────────
     const urlInput = await waitFor(() =>
+      document.querySelector('textarea[placeholder*="Paste" i]') ||
+      document.querySelector('textarea[placeholder*="link" i]') ||
+      document.querySelector('textarea[placeholder*="url" i]') ||
+      document.querySelector('textarea') ||
       document.querySelector('input[type="url"]') ||
       document.querySelector('input[placeholder*="url" i]') ||
-      document.querySelector('input[placeholder*="http" i]') ||
-      document.querySelector('input[placeholder*="paste" i]') ||
-      document.querySelector('input[placeholder*="link" i]') ||
-      document.querySelector('textarea[placeholder*="url" i]')
+      document.querySelector('input[placeholder*="http" i]')
     , 8000);
     setInputValue(urlInput, targetUrl);
     await sleep(400);
