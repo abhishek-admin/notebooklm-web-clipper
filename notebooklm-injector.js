@@ -50,15 +50,21 @@ async function runClipper() {
     'nlm_pending_url',
     'nlm_pending_title',
     'nlm_pending_mode',
+    'nlm_pending_content',
   ]);
 
   if (!data.nlm_pending_url) return;
 
-  const targetUrl  = data.nlm_pending_url;
-  const targetMode = data.nlm_pending_mode || 'source'; // 'source' | 'podcast'
+  const targetUrl     = data.nlm_pending_url;
+  const targetTitle   = data.nlm_pending_title || '';
+  const targetMode    = data.nlm_pending_mode || 'source';
+  const targetContent = data.nlm_pending_content || '';
 
   // Clear so it doesn't re-fire on refresh
-  await chrome.storage.local.remove(['nlm_pending_url', 'nlm_pending_title', 'nlm_pending_mode']);
+  await chrome.storage.local.remove([
+    'nlm_pending_url', 'nlm_pending_title',
+    'nlm_pending_mode', 'nlm_pending_content',
+  ]);
 
   // Wait for NLM to fully hydrate
   await sleep(2000);
@@ -105,7 +111,7 @@ async function runClipper() {
     setInputValue(urlInput, targetUrl);
     await sleep(400);
 
-    // ── STEP 5: Click Insert / Add / Confirm ──────────────────────────
+    // ── STEP 5: Click Insert ──────────────────────────────────────────
     const insertBtn = await waitFor(() =>
       findByText('Insert') ||
       findByText('Add') ||
@@ -115,7 +121,55 @@ async function runClipper() {
       document.querySelector('button[type="submit"]')
     , 8000);
     insertBtn.click();
-    await sleep(1000);
+
+    // ── STEP 5b: Detect "source restrictions" error & fall back to text paste
+    await sleep(2500);
+    const hasRestriction = !!Array.from(document.querySelectorAll('*')).find(el =>
+      el.children.length === 0 &&
+      (el.textContent.includes('source restriction') ||
+       el.textContent.includes('Unable to import'))
+    );
+
+    if (hasRestriction && targetContent) {
+      // Close any open dialog first
+      const closeBtn = document.querySelector('[aria-label="Close"], [aria-label="close"]') ||
+        findByText('Cancel') || findByText('✕') || findByText('×');
+      if (closeBtn) { closeBtn.click(); await sleep(500); }
+
+      // Re-open Add sources
+      const addBtn2 = await waitFor(() =>
+        findByText('Add source') || findByText('Add sources')
+      , 6000);
+      addBtn2.click();
+      await sleep(800);
+
+      // Click "Copied text" / "Paste text" option
+      const textBtn = await waitFor(() =>
+        findByText('Copied text') ||
+        findByText('Paste text') ||
+        findByText('Text') ||
+        document.querySelector('[aria-label*="paste" i]') ||
+        document.querySelector('[aria-label*="text" i]')
+      , 6000);
+      textBtn.click();
+      await sleep(600);
+
+      // Fill the textarea with formatted content
+      const textArea2 = await waitFor(() => document.querySelector('textarea'), 6000);
+      const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      const formattedText = `Title: ${targetTitle}\nSource: ${targetUrl}\nDate: ${today}\n\n${targetContent.slice(0, 50000)}`;
+      setInputValue(textArea2, formattedText);
+      await sleep(400);
+
+      // Click Insert for text paste
+      const insertBtn2 = await waitFor(() =>
+        findByText('Insert') || findByText('Add') || document.querySelector('button[type="submit"]')
+      , 6000);
+      insertBtn2.click();
+      await sleep(1000);
+    } else {
+      await sleep(500);
+    }
 
     // ── STEP 6 (podcast only): Trigger Audio Overview ─────────────────
     if (targetMode === 'podcast') {

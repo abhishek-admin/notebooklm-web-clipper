@@ -29,8 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggleGeminiKey     = document.getElementById('toggle-gemini-key');
   const toggleOpenrouterKey = document.getElementById('toggle-openrouter-key');
 
-  let currentTabUrl   = '';
-  let currentTabTitle = '';
+  let currentTabUrl     = '';
+  let currentTabTitle   = '';
+  let extractedContent  = ''; // cached for text-paste fallback
 
   // ---- UI State ----
 
@@ -96,8 +97,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       const page = await getPageContent();
-      currentTabUrl   = page.url;
-      currentTabTitle = page.title;
+      currentTabUrl    = page.url;
+      currentTabTitle  = page.title;
+      extractedContent = page.text || '';
 
       const prompt = `Analyze this web page and return ONLY the following two lines, nothing else:
 
@@ -145,9 +147,10 @@ Content: ${page.text.slice(0, 6000)}`;
     podcastBtn.disabled = true;
 
     await chrome.storage.local.set({
-      nlm_pending_url:   currentTabUrl,
-      nlm_pending_title: currentTabTitle,
-      nlm_pending_mode:  mode,
+      nlm_pending_url:     currentTabUrl,
+      nlm_pending_title:   currentTabTitle,
+      nlm_pending_mode:    mode,
+      nlm_pending_content: extractedContent, // fallback for restricted pages
     });
 
     chrome.tabs.create({ url: 'https://notebooklm.google.com' });
